@@ -12,17 +12,17 @@ Optionally, the Infra Confluence space (cwiki.apache.org, space `INFRA`) is inde
 
 ## Tools
 
-| Tool | Purpose |
+| Tool | What it does |
 | --- | --- |
-| `list_docs` | Every page, grouped by topic; `source` limits to `website`, `asfyaml` or `cwiki` |
-| `get_doc` | Full text of one page; accepts a unique partial key |
-| `search_docs` | Chunked BM25 search with a small Infra vocabulary bridge (2fa → mfa, gpg → openpgp, site → website) |
-| `find_examples` | Code and config examples by topic and fence language (`yaml`, `bash`) |
-| `extract_code_snippets` | Inventory of every fenced snippet, filterable by key and language |
-| `get_related_docs` | Pages related by links, backlinks, topic and shared vocabulary |
-| `explain_doc_map` | Topics with sample pages, plus entry points for `new-committer`, `release-manager`, `pmc`, `website-maintainer` or `ci-maintainer`; `full_map` lists every page |
-| `find_broken_links` | Missing pages and anchors in a local checkout; optional external URL checks |
-| `refresh_docs` | Bypass the caches and re-fetch from GitHub and the wiki |
+| `list_docs` | Lists every page by topic |
+| `get_doc` | Returns one page in full |
+| `search_docs` | Searches all sources |
+| `find_examples` | Finds code and config examples |
+| `extract_code_snippets` | Lists every code block |
+| `get_related_docs` | Finds pages related to one page |
+| `explain_doc_map` | Suggests where to start, by role |
+| `find_broken_links` | Checks a local checkout for broken links |
+| `refresh_docs` | Re-fetches everything, ignoring caches |
 
 Most pages sit flat in `content/pages`, so topics come from key prefixes (`release-*`, `github-actions*`, `asf-pelican*`) rather than directories. A question made only of stop words ("what is Infra") returns the services overview.
 
