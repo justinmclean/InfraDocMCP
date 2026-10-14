@@ -30,6 +30,8 @@ Most pages sit flat in `content/pages`, so topics come from key prefixes (`relea
 
 A page whose opening says it is archived, superseded or outdated is labelled so in `search_docs`, `get_doc` and `list_docs`, with the replacement URL when the notice names one (`ARCHIVED, see https://github.com/apache/infrastructure-asfyaml/...`). It is ranked lower rather than dropped, so it is still found when nothing else covers the subject. Archived and superseded pages have a replacement and drop further (score × 0.4) than outdated ones (× 0.75), which are often still the only material on their subject.
 
+Wiki pages are also ranked lower by age, since many have not been edited in years. A page edited in the last three years keeps its full score; after that the score slides linearly to × 0.6 at seven years and stays there. Age and notice weights multiply. Website pages carry no edit date and are not aged.
+
 Neither source has a structured marker for this, so detection reads the page's first 600 characters, using narrow patterns. Pages that merely mention mailing-list archives or a deprecated tool are not flagged.
 
 ## Corpus sources

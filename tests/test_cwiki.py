@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import stat
 import sys
+from datetime import date
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -172,6 +173,41 @@ def test_list_and_get_include_wiki(monkeypatch: pytest.MonkeyPatch) -> None:
     page = tools.get_doc("Gitbox-Runbook")
     assert "Infra wiki, updated 2019-03-04" in page
     assert "systemctl restart" in tools.find_examples(language="bash")
+
+
+@pytest.mark.parametrize(
+    ("updated", "weight"),
+    [
+        ("", 1.0),
+        ("not a date", 1.0),
+        ("2026-01-01", 1.0),
+        ("2023-07-01", 1.0),
+        ("2021-07-01", 0.8),
+        ("2019-07-01", 0.6),
+        ("2010-01-01", 0.6),
+    ],
+)
+def test_age_weight_slides_after_grace_period(updated: str, weight: float) -> None:
+    today = date(2026, 7, 1)
+    assert tools._age_weight({"updated": updated}, today) == pytest.approx(weight, abs=0.01)
+
+
+def test_old_wiki_page_ranks_below_recent_one(monkeypatch: pytest.MonkeyPatch) -> None:
+    body = "<p>Restart the relay service on the mail host.</p>"
+    pages = [
+        {"id": "201", "title": "Relay Old", "version": {"when": "2015-01-01T00:00:00.000Z"},
+         "body": {"storage": {"value": body}}},
+        {"id": "202", "title": "Relay New", "version": {"when": f"{date.today():%Y-%m-%d}T00:00:00.000Z"},
+         "body": {"storage": {"value": body}}},
+    ]
+    monkeypatch.setenv("CWIKI_TOKEN", "secret")
+    monkeypatch.setattr(
+        cwiki, "fetch_remote", lambda _token: ({d["key"]: d for d in map(cwiki._doc_entry, pages)}, [])
+    )
+    out = tools.search_docs("restart relay mail host", source="cwiki")
+    headings = [line for line in out.splitlines() if line.startswith("## [")]
+    assert "Relay New" in headings[0]
+    assert any("Relay Old" in line for line in headings)
 
 
 def test_refresh_reports_wiki(monkeypatch: pytest.MonkeyPatch) -> None:

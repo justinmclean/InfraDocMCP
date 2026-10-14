@@ -10,6 +10,7 @@ from __future__ import annotations
 import posixpath
 import re
 from collections import Counter
+from datetime import date
 from math import log
 from pathlib import Path
 from typing import Any
@@ -264,6 +265,14 @@ STALE_NOTICE_WINDOW = 600
 # Archived and superseded pages have a replacement, so they drop further than
 # an outdated page, which is often still the only material on its subject.
 STALE_WEIGHTS = {"archived": 0.4, "superseded": 0.4, "outdated": 0.75}
+# Wiki pages carry their last edit date; website pages have none and are never
+# aged. An old page is often still right, since runbooks rarely change, so age
+# demotes gently: nothing inside the grace period, then a linear slide to the
+# floor. Without it, 2020 Jenkins plugin tables outrank current pages on any
+# query that names a plugin word such as "monitoring".
+AGE_GRACE_YEARS = 3.0
+AGE_FLOOR_YEARS = 7.0
+AGE_MIN_WEIGHT = 0.6
 _URL = re.compile(r"https?://[^\s)\]>,]+")
 
 
@@ -293,6 +302,19 @@ def _stale_label(doc: dict[str, Any]) -> str:
     if notice["replacement"]:
         label += f", see {notice['replacement']}"
     return label
+
+
+def _age_weight(doc: dict[str, Any], today: date | None = None) -> float:
+    """Return the ranking weight for a page's last edit date, 1.0 when undated."""
+    try:
+        edited = date.fromisoformat(str(doc.get("updated") or "")[:10])
+    except ValueError:
+        return 1.0
+    years = ((today or date.today()) - edited).days / 365.25
+    if years <= AGE_GRACE_YEARS:
+        return 1.0
+    slide = (years - AGE_GRACE_YEARS) / (AGE_FLOOR_YEARS - AGE_GRACE_YEARS)
+    return max(AGE_MIN_WEIGHT, 1.0 - (1.0 - AGE_MIN_WEIGHT) * slide)
 
 
 def _term_forms(term: str) -> set[str]:
@@ -358,7 +380,7 @@ def _doc_chunks(doc: dict[str, Any]) -> list[dict[str, Any]]:
     start = 0
     in_fence = False
     notice = _stale_notice(doc)
-    weight = STALE_WEIGHTS[notice["kind"]] if notice else 1.0
+    weight = (STALE_WEIGHTS[notice["kind"]] if notice else 1.0) * _age_weight(doc)
 
     def add_chunk(chunk_start: int, chunk_end: int) -> None:
         excerpt = "\n".join(lines[chunk_start:chunk_end]).strip()
@@ -710,6 +732,7 @@ def search_docs(query: str, max_results: int = 8, source: str = "all") -> str:
     Pages whose opening says they are archived, superseded or outdated are
     labelled so, with the replacement URL when the notice names one, and
     ranked below current pages. Prefer the replacement when answering.
+    Wiki pages not edited for over three years are also ranked lower.
 
     Prefer this over answering Infra questions from memory: services and
     policies change and these pages are the current truth.
